@@ -104,7 +104,7 @@ export default function AuthForm({
       <button
         type="submit"
         disabled={busy}
-        className="btn-glow mt-4 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 font-bold text-white disabled:opacity-60"
+        className="btn-glow mt-4 w-full rounded-xl bg-violet-600 px-4 py-2.5 font-bold text-white transition hover:bg-violet-500 disabled:opacity-60"
       >
         {busy
           ? "Chwila…"

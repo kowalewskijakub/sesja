@@ -126,7 +126,7 @@ export default function AdminPanel({
         className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/12 bg-ink p-5 sm:rounded-3xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Panel prowadzącego</h2>
+          <h2 className="text-lg font-bold">Panel organizatora</h2>
           <button
             onClick={onClose}
             className="rounded-lg px-2 py-1 text-indigo-200/60 hover:bg-white/10"
@@ -153,7 +153,8 @@ export default function AdminPanel({
         {mode === "auth" && (
           <div>
             <p className="mb-3 text-sm text-indigo-200/65">
-              Zaloguj się kontem prowadzącego, żeby otworzyć panel moderacji.
+              Zaloguj się kontem, na którym utworzono tablicę, żeby otworzyć
+              panel moderacji.
             </p>
             <AuthForm onSuccess={refresh} compact />
           </div>
@@ -162,8 +163,8 @@ export default function AdminPanel({
         {mode === "notowner" && (
           <div>
             <p className="text-sm text-indigo-200/70">
-              Jesteś zalogowany, ale to konto nie jest prowadzącym tej tablicy.
-              Wyloguj się i zaloguj kontem, na którym tablica została utworzona.
+              Jesteś zalogowany, ale ta tablica należy do innego konta. Wyloguj
+              się i zaloguj tym, na którym ją utworzono.
             </p>
             <button
               onClick={logout}

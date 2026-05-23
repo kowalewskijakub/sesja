@@ -23,25 +23,14 @@ body {
   color: #ecebff;
   background-color: #0a0a16;
   background-image:
-    radial-gradient(60rem 60rem at 12% -8%, rgba(124, 58, 237, 0.32), transparent 60%),
-    radial-gradient(50rem 50rem at 95% 0%, rgba(236, 72, 153, 0.26), transparent 55%),
-    radial-gradient(55rem 55rem at 50% 115%, rgba(34, 211, 238, 0.22), transparent 60%);
+    radial-gradient(55rem 55rem at 15% -12%, rgba(99, 102, 241, 0.16), transparent 60%),
+    radial-gradient(45rem 45rem at 92% 8%, rgba(139, 92, 246, 0.12), transparent 60%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Gradientowy tekst akcentowy */
-.text-gradient {
-  background: linear-gradient(100deg, #a78bfa, #ec4899 55%, #22d3ee);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .btn-glow {
-  box-shadow:
-    0 0 0 1px rgba(167, 139, 250, 0.4),
-    0 8px 30px -8px rgba(167, 139, 250, 0.6);
+  box-shadow: 0 10px 30px -12px rgba(124, 58, 237, 0.55);
 }
 
 /* Pasek postępu z animowanym połyskiem */

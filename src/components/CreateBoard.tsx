@@ -11,9 +11,9 @@ const yearOptions = [
 ];
 
 export default function CreateBoard({
-  signedInName,
+  signedIn,
 }: {
-  signedInName: string | null;
+  signedIn: boolean;
 }) {
   const router = useRouter();
   const [subject, setSubject] = useState("");
@@ -48,14 +48,14 @@ export default function CreateBoard({
     }
   }
 
-  // --- Niezalogowany: logowanie / rejestracja prowadzącego ---
-  if (!signedInName) {
+  // --- Niezalogowany: założenie konta organizatora tablicy ---
+  if (!signedIn) {
     return (
       <div className="mt-9 w-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
-        <div className="text-lg font-bold">Zacznij od konta prowadzącego</div>
+        <div className="text-lg font-bold">Załóż konto, żeby stworzyć tablicę</div>
         <p className="mb-4 mt-0.5 text-sm text-indigo-200/60">
-          Konto potrzebne jest tylko do założenia i moderowania tablicy.
-          Studenci dodają pytania bez logowania.
+          Konto przyda Ci się tylko do założenia tablicy i moderowania pytań.
+          Reszta grupy dorzuca pytania bez zakładania konta.
         </p>
         <AuthForm onSuccess={() => router.refresh()} compact />
       </div>
@@ -66,9 +66,9 @@ export default function CreateBoard({
   if (createdSlug) {
     return (
       <div className="mt-9 w-full rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-6">
-        <div className="text-lg font-bold">Tablica gotowa! 🎉</div>
+        <div className="text-lg font-bold">Tablica gotowa</div>
         <p className="mt-1 text-sm text-indigo-200/70">
-          Udostępnij ten link grupie. Tylko osoby z linkiem trafią na tablicę.
+          Wyślij ten link grupie. Na tablicę trafią tylko osoby, które go dostaną.
         </p>
         <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-1.5">
           <input
@@ -89,13 +89,13 @@ export default function CreateBoard({
         </div>
         <button
           onClick={() => router.push(`/t/${createdSlug}`)}
-          className="btn-glow mt-4 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 font-bold text-white"
+          className="btn-glow mt-4 w-full rounded-xl bg-violet-600 px-4 py-3 font-bold text-white transition hover:bg-violet-500"
         >
           Przejdź do tablicy →
         </button>
         <p className="mt-3 text-xs text-indigo-200/50">
-          Jesteś prowadzącym tej tablicy. Panel moderacji odblokujesz na stronie
-          tablicy — wystarczy, że jesteś zalogowany.
+          To Twoja tablica. Panel moderacji otworzysz na jej stronie —
+          wystarczy, że jesteś zalogowany.
         </p>
       </div>
     );
@@ -107,12 +107,7 @@ export default function CreateBoard({
       onSubmit={submit}
       className="mt-9 w-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur"
     >
-      <div className="flex items-center justify-between">
-        <div className="text-lg font-bold">Nowa tablica</div>
-        <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs text-violet-200">
-          {signedInName}
-        </span>
-      </div>
+      <div className="text-lg font-bold">Nowa tablica</div>
       <p className="mb-4 mt-0.5 text-sm text-indigo-200/60">
         Jedna tablica = jeden przedmiot, rok i wykładowca.
       </p>
@@ -170,7 +165,7 @@ export default function CreateBoard({
       <button
         type="submit"
         disabled={busy}
-        className="btn-glow mt-5 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-3 font-bold text-white disabled:opacity-60"
+        className="btn-glow mt-5 w-full rounded-xl bg-violet-600 px-4 py-3 font-bold text-white transition hover:bg-violet-500 disabled:opacity-60"
       >
         {busy ? "Tworzę…" : "Stwórz tablicę"}
       </button>

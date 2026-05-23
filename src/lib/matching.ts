@@ -5,46 +5,6 @@ import { embed } from "./embeddings";
 import { normalizeKey, tidyText } from "./normalize";
 
 const MATCH_THRESHOLD = Number(process.env.MATCH_THRESHOLD ?? "0.82");
-const SUGGEST_THRESHOLD = 0.6;
-
-export interface SimilarQuestion {
-  id: number;
-  text: string;
-  count: number;
-  similarity: number;
-}
-
-/** Top podobne pytania — do podpowiedzi na żywo podczas pisania. */
-export async function findSimilar(
-  boardId: number,
-  text: string,
-  limit = 3,
-): Promise<SimilarQuestion[]> {
-  const clean = text.trim();
-  if (clean.length < 3) return [];
-
-  const vec = await embed(clean);
-  if (!vec) return [];
-
-  const similarity = sql<number>`1 - (${cosineDistance(questions.embedding, vec)})`;
-  return db
-    .select({
-      id: questions.id,
-      text: questions.text,
-      count: questions.count,
-      similarity,
-    })
-    .from(questions)
-    .where(
-      and(
-        eq(questions.boardId, boardId),
-        eq(questions.hidden, false),
-        gt(similarity, SUGGEST_THRESHOLD),
-      ),
-    )
-    .orderBy(desc(similarity))
-    .limit(limit);
-}
 
 /**
  * Dodaje wpis do tablicy: liczy embedding, szuka dopasowania, zlicza je
