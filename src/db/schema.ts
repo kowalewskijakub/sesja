@@ -24,7 +24,10 @@ export const boards = pgTable("boards", {
   subject: text("subject").notNull(),
   year: text("year").notNull(),
   lecturer: text("lecturer").notNull(),
-  adminEmail: text("admin_email").notNull(),
+  // ID właściciela (prowadzącego) z Neon Auth — neon_auth.user.id (uuid jako tekst).
+  // Bez klucza obcego do schematu neon_auth, żeby drizzle-kit push zarządzał
+  // wyłącznie tabelami w schemacie public.
+  ownerId: text("owner_id").notNull(),
   // Okno czasowe na dodawanie pytań. NULL = bez ograniczenia.
   submissionFrom: timestamp("submission_from", { withTimezone: true }),
   submissionTo: timestamp("submission_to", { withTimezone: true }),
@@ -74,16 +77,7 @@ export const submissions = pgTable(
   }),
 );
 
-/** Jednorazowe kody logowania admina (OTP wysyłany na e-mail). */
-export const adminCodes = pgTable("admin_codes", {
-  id: serial("id").primaryKey(),
-  boardId: integer("board_id")
-    .notNull()
-    .references(() => boards.id, { onDelete: "cascade" }),
-  code: varchar("code", { length: 6 }).notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+// Logowanie prowadzącego obsługuje Neon Auth — brak własnej tabeli kodów OTP.
 
 export type Board = typeof boards.$inferSelect;
 export type Question = typeof questions.$inferSelect;

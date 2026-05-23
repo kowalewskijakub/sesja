@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { boards, questions } from "@/db/schema";
 import { getBoardBySlug } from "@/lib/boards";
-import { adminCookieName, isAdmin } from "@/lib/auth";
+import { getSessionUser, isBoardOwner } from "@/lib/auth";
 import { ingestQuestion, mergeQuestions } from "@/lib/matching";
 import { tidyText } from "@/lib/normalize";
 import { hashIp } from "@/lib/rate-limit";
+
+export const dynamic = "force-dynamic";
 
 function parseDate(value: unknown, endOfDay: boolean): Date | null {
   if (!value) return null;
@@ -28,8 +29,11 @@ export async function GET(
     return NextResponse.json({ error: "Nie znaleziono tablicy" }, { status: 404 });
   }
 
-  if (!(await isAdmin(slug, board.id))) {
-    return NextResponse.json({ isAdmin: false });
+  const user = await getSessionUser();
+  const owner = !!user && user.id === board.ownerId;
+
+  if (!owner) {
+    return NextResponse.json({ isAdmin: false, signedIn: !!user });
   }
 
   const rows = await db
@@ -45,6 +49,7 @@ export async function GET(
 
   return NextResponse.json({
     isAdmin: true,
+    signedIn: true,
     submissionFrom: board.submissionFrom,
     submissionTo: board.submissionTo,
     questions: rows,
@@ -61,7 +66,7 @@ export async function PATCH(
   if (!board) {
     return NextResponse.json({ error: "Nie znaleziono tablicy" }, { status: 404 });
   }
-  if (!(await isAdmin(slug, board.id))) {
+  if (!(await isBoardOwner(board))) {
     return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
   }
 
@@ -167,15 +172,4 @@ export async function PATCH(
     default:
       return NextResponse.json({ error: "Nieznana akcja" }, { status: 400 });
   }
-}
-
-/** Wylogowanie admina. */
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ slug: string }> },
-) {
-  const { slug } = await params;
-  const store = await cookies();
-  store.delete(adminCookieName(slug));
-  return NextResponse.json({ ok: true });
 }

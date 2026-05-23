@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getBoardBySlug, windowStatus } from "@/lib/boards";
-import { isAdmin } from "@/lib/auth";
+import { isBoardOwner } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
@@ -13,7 +15,7 @@ export async function GET(
   }
 
   const status = windowStatus(board);
-  const admin = await isAdmin(slug, board.id);
+  const admin = await isBoardOwner(board);
 
   return NextResponse.json({
     slug: board.slug,

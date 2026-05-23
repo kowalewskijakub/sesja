@@ -1,42 +1,30 @@
-import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import type { Board } from "@/db/schema";
+import { auth } from "./neon-auth-server";
 
-const secret = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET ?? "dev-secret-zmien-mnie",
-);
-
-export function adminCookieName(slug: string): string {
-  return `sesja_admin_${slug}`;
+export interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
 }
 
-/** Podpisuje token sesji admina ważny 30 dni. */
-export async function signAdminToken(boardId: number): Promise<string> {
-  return new SignJWT({ boardId })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("30d")
-    .sign(secret);
-}
-
-async function boardIdFromToken(token: string | undefined): Promise<number | null> {
-  if (!token) return null;
+/** Zwraca zalogowanego użytkownika (prowadzącego) albo null. */
+export async function getSessionUser(): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
-    return typeof payload.boardId === "number" ? payload.boardId : null;
+    const { data } = await auth.getSession();
+    const user = data?.user;
+    if (!user) return null;
+    return {
+      id: String(user.id),
+      email: String(user.email ?? ""),
+      name: String(user.name ?? user.email ?? ""),
+    };
   } catch {
     return null;
   }
 }
 
-/** Sprawdza, czy bieżący request ma ważną sesję admina dla danej tablicy. */
-export async function isAdmin(slug: string, boardId: number): Promise<boolean> {
-  const store = await cookies();
-  const token = store.get(adminCookieName(slug))?.value;
-  const id = await boardIdFromToken(token);
-  return id === boardId;
-}
-
-/** Generuje 6-cyfrowy kod OTP. */
-export function generateCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+/** Czy zalogowany użytkownik jest prowadzącym danej tablicy. */
+export async function isBoardOwner(board: Board): Promise<boolean> {
+  const user = await getSessionUser();
+  return !!user && user.id === board.ownerId;
 }

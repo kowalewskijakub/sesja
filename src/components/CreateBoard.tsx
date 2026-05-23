@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AuthForm from "./AuthForm";
 
 const currentYear = new Date().getFullYear();
 const yearOptions = [
@@ -9,12 +10,15 @@ const yearOptions = [
   `${currentYear}/${currentYear + 1}`,
 ];
 
-export default function CreateBoard() {
+export default function CreateBoard({
+  signedInName,
+}: {
+  signedInName: string | null;
+}) {
   const router = useRouter();
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState(yearOptions[0]);
   const [lecturer, setLecturer] = useState("");
-  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [createdSlug, setCreatedSlug] = useState("");
@@ -32,7 +36,7 @@ export default function CreateBoard() {
       const res = await fetch("/api/boards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, year, lecturer, email }),
+        body: JSON.stringify({ subject, year, lecturer }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Coś poszło nie tak");
@@ -44,6 +48,21 @@ export default function CreateBoard() {
     }
   }
 
+  // --- Niezalogowany: logowanie / rejestracja prowadzącego ---
+  if (!signedInName) {
+    return (
+      <div className="mt-9 w-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
+        <div className="text-lg font-bold">Zacznij od konta prowadzącego</div>
+        <p className="mb-4 mt-0.5 text-sm text-indigo-200/60">
+          Konto potrzebne jest tylko do założenia i moderowania tablicy.
+          Studenci dodają pytania bez logowania.
+        </p>
+        <AuthForm onSuccess={() => router.refresh()} compact />
+      </div>
+    );
+  }
+
+  // --- Po utworzeniu tablicy: link do udostępnienia ---
   if (createdSlug) {
     return (
       <div className="mt-9 w-full rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] p-6">
@@ -76,18 +95,24 @@ export default function CreateBoard() {
         </button>
         <p className="mt-3 text-xs text-indigo-200/50">
           Jesteś prowadzącym tej tablicy. Panel moderacji odblokujesz na stronie
-          tablicy, logując się kodem wysłanym na {email}.
+          tablicy — wystarczy, że jesteś zalogowany.
         </p>
       </div>
     );
   }
 
+  // --- Zalogowany: formularz tworzenia tablicy ---
   return (
     <form
       onSubmit={submit}
       className="mt-9 w-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur"
     >
-      <div className="text-lg font-bold">Nowa tablica</div>
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold">Nowa tablica</div>
+        <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs text-violet-200">
+          {signedInName}
+        </span>
+      </div>
       <p className="mb-4 mt-0.5 text-sm text-indigo-200/60">
         Jedna tablica = jeden przedmiot, rok i wykładowca.
       </p>
@@ -105,7 +130,7 @@ export default function CreateBoard() {
         />
       </label>
 
-      <div className="mb-3 grid grid-cols-2 gap-3">
+      <div className="mb-1 grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-indigo-200/70">
             Rok akademicki
@@ -135,20 +160,6 @@ export default function CreateBoard() {
           />
         </label>
       </div>
-
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-indigo-200/70">
-          Twój e-mail (logowanie do panelu prowadzącego)
-        </span>
-        <input
-          required
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="ty@example.com"
-          className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-[15px] outline-none placeholder:text-indigo-200/30 focus:border-violet-400/60"
-        />
-      </label>
 
       {error && (
         <div className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">

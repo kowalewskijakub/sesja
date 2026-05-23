@@ -1,6 +1,11 @@
 import CreateBoard from "@/components/CreateBoard";
+import { getSessionUser } from "@/lib/auth";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const user = await getSessionUser();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center px-5 py-14">
       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-200">
@@ -16,7 +21,7 @@ export default function HomePage() {
         grupuje podobne wpisy i pokazuje ranking — na żywo, jak w Kahoocie.
       </p>
 
-      <CreateBoard />
+      <CreateBoard signedInName={user?.name ?? null} />
 
       <ol className="mt-12 grid w-full gap-3 sm:grid-cols-3">
         {[

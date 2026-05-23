@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getBoardBySlug, windowStatus } from "@/lib/boards";
-import { isAdmin } from "@/lib/auth";
+import { isBoardOwner } from "@/lib/auth";
 import BoardClient from "@/components/BoardClient";
 
 // Tablice nie powinny trafiać do wyszukiwarek — to linki "tylko dla znających URL".
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
+
+export const dynamic = "force-dynamic";
 
 export default async function BoardPage({
   params,
@@ -19,7 +21,7 @@ export default async function BoardPage({
   if (!board) notFound();
 
   const status = windowStatus(board);
-  const admin = await isAdmin(slug, board.id);
+  const admin = await isBoardOwner(board);
 
   return (
     <BoardClient

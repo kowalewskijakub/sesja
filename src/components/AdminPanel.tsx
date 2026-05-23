@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { AdminQuestion } from "@/lib/types";
+import { authClient } from "@/lib/neon-auth-client";
+import AuthForm from "./AuthForm";
 
 interface Props {
   slug: string;
@@ -12,6 +14,8 @@ interface Props {
   onDataChange: () => void;
 }
 
+type Mode = "loading" | "auth" | "notowner" | "panel";
+
 export default function AdminPanel({
   slug,
   isAdmin,
@@ -19,11 +23,7 @@ export default function AdminPanel({
   onAdminChange,
   onDataChange,
 }: Props) {
-  const [step, setStep] = useState<"email" | "code" | "panel">(
-    isAdmin ? "panel" : "email",
-  );
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [mode, setMode] = useState<Mode>(isAdmin ? "panel" : "loading");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -34,63 +34,29 @@ export default function AdminPanel({
   const [bulk, setBulk] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const loadPanel = useCallback(async () => {
-    const res = await fetch(`/api/boards/${slug}/admin`, { cache: "no-store" });
-    const data = await res.json();
-    if (!data.isAdmin) {
-      onAdminChange(false);
-      setStep("email");
-      return;
+  // Pobiera status sesji + dane panelu i ustala tryb widoku.
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/boards/${slug}/admin`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.isAdmin) {
+        setQuestions(data.questions ?? []);
+        setFrom(data.submissionFrom ? String(data.submissionFrom).slice(0, 10) : "");
+        setTo(data.submissionTo ? String(data.submissionTo).slice(0, 10) : "");
+        setMode("panel");
+        onAdminChange(true);
+      } else {
+        setMode(data.signedIn ? "notowner" : "auth");
+        onAdminChange(false);
+      }
+    } catch {
+      setError("Problem z połączeniem — spróbuj ponownie");
     }
-    setQuestions(data.questions ?? []);
-    setFrom(data.submissionFrom ? String(data.submissionFrom).slice(0, 10) : "");
-    setTo(data.submissionTo ? String(data.submissionTo).slice(0, 10) : "");
   }, [slug, onAdminChange]);
 
   useEffect(() => {
-    if (step === "panel") loadPanel();
-  }, [step, loadPanel]);
-
-  async function requestCode() {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/boards/${slug}/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Błąd");
-      setStep("code");
-      setInfo(`Kod wysłany na ${email}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Błąd");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyCode() {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/boards/${slug}/admin/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Błąd");
-      onAdminChange(true);
-      setInfo("");
-      setStep("panel");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Błąd");
-    } finally {
-      setBusy(false);
-    }
-  }
+    refresh();
+  }, [refresh]);
 
   async function patch(body: Record<string, unknown>, okMsg?: string) {
     setBusy(true);
@@ -108,7 +74,7 @@ export default function AdminPanel({
         setTimeout(() => setInfo(""), 2200);
       }
       setSelected(new Set());
-      await loadPanel();
+      await refresh();
       onDataChange();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Błąd");
@@ -118,9 +84,14 @@ export default function AdminPanel({
   }
 
   async function logout() {
-    await fetch(`/api/boards/${slug}/admin`, { method: "DELETE" });
-    onAdminChange(false);
-    onClose();
+    setBusy(true);
+    try {
+      await authClient.signOut();
+    } catch {
+      /* i tak odświeżamy stan */
+    }
+    setBusy(false);
+    await refresh();
   }
 
   function toggleSelect(id: number) {
@@ -175,59 +146,36 @@ export default function AdminPanel({
           </div>
         )}
 
-        {step === "email" && (
+        {mode === "loading" && (
+          <p className="py-8 text-center text-sm text-indigo-200/55">Ładuję…</p>
+        )}
+
+        {mode === "auth" && (
           <div>
             <p className="mb-3 text-sm text-indigo-200/65">
-              Wpisz e-mail podany przy tworzeniu tablicy — wyślemy kod
-              logowania.
+              Zaloguj się kontem prowadzącego, żeby otworzyć panel moderacji.
             </p>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ty@example.com"
-              className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 outline-none focus:border-violet-400/60"
-            />
+            <AuthForm onSuccess={refresh} compact />
+          </div>
+        )}
+
+        {mode === "notowner" && (
+          <div>
+            <p className="text-sm text-indigo-200/70">
+              Jesteś zalogowany, ale to konto nie jest prowadzącym tej tablicy.
+              Wyloguj się i zaloguj kontem, na którym tablica została utworzona.
+            </p>
             <button
-              onClick={requestCode}
+              onClick={logout}
               disabled={busy}
-              className="btn-glow mt-3 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 font-bold text-white disabled:opacity-60"
+              className="mt-4 w-full rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-indigo-200/80 hover:bg-white/5 disabled:opacity-60"
             >
-              {busy ? "Wysyłam…" : "Wyślij kod"}
+              Wyloguj się
             </button>
           </div>
         )}
 
-        {step === "code" && (
-          <div>
-            <p className="mb-3 text-sm text-indigo-200/65">
-              Wpisz 6-cyfrowy kod z e-maila.
-            </p>
-            <input
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              maxLength={6}
-              className="w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-center text-2xl font-bold tracking-[0.4em] outline-none focus:border-violet-400/60"
-            />
-            <button
-              onClick={verifyCode}
-              disabled={busy}
-              className="btn-glow mt-3 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 font-bold text-white disabled:opacity-60"
-            >
-              {busy ? "Sprawdzam…" : "Zaloguj"}
-            </button>
-            <button
-              onClick={() => setStep("email")}
-              className="mt-2 w-full text-xs text-indigo-200/50 hover:text-indigo-200"
-            >
-              ← zmień e-mail
-            </button>
-          </div>
-        )}
-
-        {step === "panel" && (
+        {mode === "panel" && (
           <div className="space-y-6">
             {/* Okno czasowe */}
             <section>
@@ -275,7 +223,10 @@ export default function AdminPanel({
                   onClick={() => {
                     setFrom("");
                     setTo("");
-                    patch({ action: "window", from: null, to: null }, "Ustawiono bezterminowo");
+                    patch(
+                      { action: "window", from: null, to: null },
+                      "Ustawiono bezterminowo",
+                    );
                   }}
                   disabled={busy}
                   className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-indigo-200/80 hover:bg-white/5 disabled:opacity-60"
@@ -298,11 +249,10 @@ export default function AdminPanel({
                 className="w-full resize-y rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-violet-400/60"
               />
               <button
-                onClick={() =>
-                  patch({ action: "bulkAdd", text: bulk }, "Dodano pytania").then(
-                    () => setBulk(""),
-                  )
-                }
+                onClick={async () => {
+                  await patch({ action: "bulkAdd", text: bulk }, "Dodano pytania");
+                  setBulk("");
+                }}
                 disabled={busy || bulk.trim().length < 3}
                 className="mt-2 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-400 disabled:opacity-60"
               >
@@ -396,7 +346,8 @@ export default function AdminPanel({
 
             <button
               onClick={logout}
-              className="w-full rounded-lg border border-white/10 py-2 text-sm text-indigo-200/60 hover:bg-white/5"
+              disabled={busy}
+              className="w-full rounded-lg border border-white/10 py-2 text-sm text-indigo-200/60 hover:bg-white/5 disabled:opacity-60"
             >
               Wyloguj
             </button>

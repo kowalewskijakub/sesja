@@ -4,17 +4,18 @@ Ranking pytań egzaminacyjnych na żywo. Studenci po egzaminie wpisują pytanie,
 które im się trafiło — aplikacja grupuje podobne wpisy (embeddingi + pgvector)
 i pokazuje animowany ranking w stylu Kahoota.
 
-Każdy może stworzyć tablicę (przedmiot + rok + wykładowca), dostaje
-niezgadywalny link do udostępnienia i staje się jej prowadzącym
-(moderacja, okno czasowe, dodawanie hurtowe).
+Każdy zalogowany użytkownik może stworzyć tablicę (przedmiot + rok + wykładowca),
+dostaje niezgadywalny link do udostępnienia i staje się jej prowadzącym
+(moderacja, okno czasowe, dodawanie hurtowe). Studenci dodają pytania
+**bez logowania**.
 
 ## Stack
 
 - **Next.js 15** (App Router) + TypeScript + Tailwind + Framer Motion
 - **Neon** — serverless Postgres z rozszerzeniem `pgvector`
+- **Neon Auth** (Better Auth) — logowanie prowadzącego
 - **Drizzle ORM**
 - **OpenAI** `text-embedding-3-small` — matchowanie podobnych pytań
-- **Resend** — kody logowania prowadzącego
 - Hosting: **Vercel**
 
 ## Uruchomienie lokalne
@@ -23,58 +24,71 @@ niezgadywalny link do udostępnienia i staje się jej prowadzącym
 npm install
 cp .env.example .env      # uzupełnij wartości (patrz niżej)
 npm run db:init           # włącza rozszerzenie pgvector (raz)
-npm run db:push           # tworzy tabele
+npm run db:push           # tworzy tabele aplikacji
 npm run dev               # http://localhost:3000
 ```
 
+> `.npmrc` ustawia `legacy-peer-deps=true` — pakiet `@neondatabase/auth`
+> (beta) deklaruje peer-zależność na Next.js 16, a my działamy na 15.
+> Flaga sprawia, że `npm install` (lokalnie i na Vercelu) przechodzi bez błędu.
+
 ## Zmienne środowiskowe
 
-Wszystkie opisane w `.env.example`. Najważniejsze:
+Wszystkie opisane w `.env.example`:
 
 | Zmienna | Skąd wziąć |
 |---|---|
-| `DATABASE_URL` | Neon → projekt → Connection Details (wariant pooled, `?sslmode=require`) |
-| `ADMIN_JWT_SECRET` | dowolny długi losowy ciąg — `openssl rand -base64 32` |
+| `DATABASE_URL` | Neon → Dashboard → Connection Details (wariant pooled) |
+| `NEON_AUTH_BASE_URL` | Neon → Project → Branch → Auth → Configuration (Auth URL) |
+| `NEON_AUTH_COOKIE_SECRET` | losowy ciąg min. 32 znaki — `openssl rand -base64 32` |
 | `OPENAI_API_KEY` | platform.openai.com → API keys |
-| `RESEND_API_KEY` | resend.com → API Keys |
-| `EMAIL_FROM` | adres na zweryfikowanej domenie w Resend |
 | `NEXT_PUBLIC_APP_URL` | adres aplikacji (np. `https://sesja.app`) |
 
-### Tryby awaryjne (działa nawet bez kluczy)
+### Tryb awaryjny embeddingów
 
-- **Brak `OPENAI_API_KEY`** → matchowanie działa tylko na identycznym
-  (znormalizowanym) tekście. Aplikacja nie przestaje działać, ale gorzej
-  grupuje warianty pytań. Wystarczy dodać klucz, by włączyć pełne embeddingi.
-- **Brak `RESEND_API_KEY`** → kod logowania prowadzącego wypisuje się w logach
-  serwera zamiast iść mailem (przydatne lokalnie).
+Bez `OPENAI_API_KEY` matchowanie działa tylko na identycznym (znormalizowanym)
+tekście — aplikacja nie przestaje działać, ale gorzej grupuje warianty pytań.
+Dodanie klucza włącza pełne embeddingi.
 
-## Konfiguracja bazy (Neon)
+## Konfiguracja Neon (baza + Auth)
 
 1. Załóż darmowy projekt na [neon.tech](https://neon.tech).
 2. Skopiuj connection string do `DATABASE_URL`.
-3. `npm run db:init` — włącza `pgvector`.
-4. `npm run db:push` — Drizzle tworzy tabele i indeks HNSW.
+3. W projekcie Neon otwórz zakładkę **Auth** i kliknij **Enable Neon Auth**.
+4. W **Auth → Configuration** wybierz framework **Next.js** i skopiuj **Auth URL**
+   do `NEON_AUTH_BASE_URL`.
+5. `npm run db:init` — włącza `pgvector`.
+6. `npm run db:push` — Drizzle tworzy tabele aplikacji (`boards`, `questions`,
+   `submissions`). Tabele użytkowników w schemacie `neon_auth` tworzy i utrzymuje
+   samo Neon Auth.
 
 Neon usypia bazę po ~5 min bezczynności, ale **wznawia się automatycznie**
-przy następnym zapytaniu (cold start ~kilkaset ms) — nie wymaga ręcznego
-odpauzowania.
+przy następnym zapytaniu — bez ręcznego odpauzowania.
+
+## Logowanie prowadzącego (Neon Auth)
+
+- Studenci dodają pytania anonimowo — bez konta.
+- Twórca tablicy zakłada konto (e-mail + hasło) przy tworzeniu tablicy.
+  Obsługą logowania, sesji i wysyłki maili zajmuje się Neon Auth — nie ma
+  własnej tabeli kodów ani integracji z zewnętrznym dostawcą maili.
+- Panel moderacji na stronie tablicy odblokowuje się, gdy zalogowany użytkownik
+  jest właścicielem (`boards.owner_id` = ID użytkownika z `neon_auth`).
+- Endpointy `/api/auth/[...path]` obsługuje handler Neon Auth.
+
+Po wdrożeniu dodaj produkcyjny adres aplikacji do sekcji **trusted domains**
+w ustawieniach Neon Auth.
 
 ## Wdrożenie na Vercel
 
 1. Wrzuć repo na GitHub.
 2. Na [vercel.com](https://vercel.com) → New Project → import repo.
-3. W ustawieniach projektu dodaj wszystkie zmienne z `.env`.
+3. Dodaj wszystkie zmienne z `.env` w ustawieniach projektu.
 4. Ustaw `NEXT_PUBLIC_APP_URL` na docelowy adres (np. `https://sesja.app`).
-5. Deploy. Pierwszy raz po deployu uruchom `npm run db:init` i `npm run db:push`
-   lokalnie z produkcyjnym `DATABASE_URL` (albo z Neon SQL Editora:
+5. Pierwszy raz po deployu uruchom `npm run db:init` i `npm run db:push`
+   lokalnie z produkcyjnym `DATABASE_URL` (lub w Neon SQL Editorze:
    `CREATE EXTENSION IF NOT EXISTS vector;`).
-6. Podłącz domenę `sesja.app` w zakładce Domains.
-
-## E-mail (Resend)
-
-Do testów możesz użyć nadawcy `onboarding@resend.dev` (działa od ręki).
-Na produkcji dodaj własną domenę w Resend i ustaw `EMAIL_FROM` na adres
-z tej domeny — inaczej maile będą lądować w spamie.
+6. Dodaj adres produkcyjny do trusted domains w Neon Auth.
+7. Podłącz domenę `sesja.app` w zakładce Domains.
 
 ## Jak działa matchowanie
 
@@ -86,29 +100,28 @@ porównywany kosinusowo z istniejącymi pytaniami w tej tablicy:
 - w przeciwnym razie powstaje nowe pytanie.
 
 Podczas pisania (debounce 400 ms) aplikacja podpowiada podobne istniejące
-pytania — student może kliknąć zamiast wpisywać. Próg podpowiedzi jest niższy
-(0.6), żeby pokazać więcej kandydatów.
-
-Próg `MATCH_THRESHOLD` możesz stroić zmienną środowiskową — wyżej = ostrzejsze
-(mniej fałszywych scaleń), niżej = agresywniejsze grupowanie.
+pytania — student może kliknąć zamiast wpisywać.
 
 ## Model danych
 
-- `boards` — tablica: przedmiot, rok, wykładowca, e-mail prowadzącego, okno czasowe
+- `boards` — tablica: przedmiot, rok, wykładowca, `owner_id` (z Neon Auth), okno czasowe
 - `questions` — kanoniczne pytanie + wektor embeddingu + licznik wystąpień
 - `submissions` — każdy surowy wpis (audyt, liczenie, rate-limiting)
-- `admin_codes` — jednorazowe kody logowania prowadzącego
+- `neon_auth.*` — użytkownicy/sesje (zarządzane przez Neon Auth)
 
 ## Struktura
 
 ```
 src/
   app/
-    page.tsx                  ekran startowy + tworzenie tablicy
+    page.tsx                  ekran startowy + logowanie + tworzenie tablicy
     t/[slug]/page.tsx          strona tablicy (noindex)
-    api/boards/...             endpointy REST
-  components/                  CreateBoard, BoardClient, Ranking, AddQuestion, AdminPanel
+    api/auth/[...path]/        handler Neon Auth
+    api/boards/...             endpointy REST aplikacji
+  components/                  CreateBoard, BoardClient, Ranking, AddQuestion,
+                               AdminPanel, AuthForm
   db/                          schemat i klient Drizzle
-  lib/                         embeddingi, matchowanie, auth, e-mail, rate-limit
+  lib/                         neon-auth-server/client, auth (helpery),
+                               embeddingi, matchowanie, rate-limit
 scripts/init-db.mjs            włączenie pgvector
 ```

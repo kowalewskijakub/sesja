@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { boards } from "@/db/schema";
 import { newSlug } from "@/lib/slug";
+import { getSessionUser } from "@/lib/auth";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Zaloguj się, aby stworzyć tablicę" },
+      { status: 401 },
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -16,16 +25,12 @@ export async function POST(req: Request) {
   const subject = String(body.subject ?? "").trim();
   const year = String(body.year ?? "").trim();
   const lecturer = String(body.lecturer ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
 
   if (!subject || !year || !lecturer) {
     return NextResponse.json(
       { error: "Uzupełnij przedmiot, rok i wykładowcę" },
       { status: 400 },
     );
-  }
-  if (!EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "Podaj poprawny e-mail" }, { status: 400 });
   }
   if (subject.length > 200 || lecturer.length > 200 || year.length > 60) {
     return NextResponse.json({ error: "Wpisane dane są za długie" }, { status: 400 });
@@ -37,7 +42,7 @@ export async function POST(req: Request) {
     subject,
     year,
     lecturer,
-    adminEmail: email,
+    ownerId: user.id,
   });
 
   return NextResponse.json({ slug });
