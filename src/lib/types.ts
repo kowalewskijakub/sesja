@@ -7,9 +7,3 @@ export interface RankedQuestion {
 export interface AdminQuestion extends RankedQuestion {
   hidden: boolean;
 }
-
-export interface Suggestion {
-  id: number;
-  text: string;
-  count: number;
-}

@@ -11,7 +11,7 @@ const RANK_STYLE = [
 const DEFAULT_STYLE = {
   ring: "ring-white/10",
   badge: "bg-white/10 text-indigo-100",
-  bar: "from-violet-400 to-fuchsia-400",
+  bar: "from-violet-500 to-violet-400",
 };
 
 export default function Ranking({
@@ -39,10 +39,9 @@ export default function Ranking({
   if (questions.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-6 py-12 text-center">
-        <div className="text-3xl">🏁</div>
-        <p className="mt-2 font-semibold">Ranking jest jeszcze pusty</p>
+        <p className="font-semibold">Ranking jest jeszcze pusty</p>
         <p className="mt-1 text-sm text-indigo-200/55">
-          Dodaj pierwsze pytanie poniżej — i patrz, jak rośnie.
+          Dodaj pierwsze pytanie poniżej — ranking ułoży się sam.
         </p>
       </div>
     );

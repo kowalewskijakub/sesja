@@ -75,7 +75,7 @@ export default function BoardClient({
           <div>
             <a
               href="/"
-              className="text-xs font-bold uppercase tracking-widest text-violet-300/70"
+              className="text-xs font-bold uppercase tracking-widest text-indigo-200/60 transition hover:text-indigo-100"
             >
               Sesja
             </a>
@@ -88,9 +88,9 @@ export default function BoardClient({
           </div>
           <button
             onClick={() => setAdminOpen(true)}
-            className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-indigo-200/80 hover:bg-white/[0.08]"
+            className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-indigo-200/80 transition hover:bg-white/[0.08]"
           >
-            {isAdmin ? "⚙ Panel" : "Prowadzący"}
+            {isAdmin ? "Panel" : "Organizator"}
           </button>
         </div>
 

@@ -1,12 +1,12 @@
 # Sesja
 
 Ranking pytań egzaminacyjnych na żywo. Studenci po egzaminie wpisują pytanie,
-które im się trafiło — aplikacja grupuje podobne wpisy (embeddingi + pgvector)
-i pokazuje animowany ranking w stylu Kahoota.
+które im się trafiło — aplikacja automatycznie grupuje podobne wpisy
+(embeddingi + pgvector) i układa je w animowany ranking.
 
 Każdy zalogowany użytkownik może stworzyć tablicę (przedmiot + rok + wykładowca),
-dostaje niezgadywalny link do udostępnienia i staje się jej prowadzącym
-(moderacja, okno czasowe, dodawanie hurtowe). Studenci dodają pytania
+dostaje prywatny link do udostępnienia i zostaje jej organizatorem
+(moderacja, okno czasowe, dodawanie hurtowe). Reszta grupy dodaje pytania
 **bez logowania**.
 
 ## Stack
@@ -71,7 +71,7 @@ zmigrować bazę.
 Neon usypia bazę po ~5 min bezczynności, ale **wznawia się automatycznie**
 przy następnym zapytaniu — bez ręcznego odpauzowania.
 
-## Logowanie prowadzącego (Neon Auth)
+## Logowanie organizatora (Neon Auth)
 
 - Studenci dodają pytania anonimowo — bez konta.
 - Twórca tablicy zakłada konto (e-mail + hasło) przy tworzeniu tablicy.
@@ -105,8 +105,8 @@ porównywany kosinusowo z istniejącymi pytaniami w tej tablicy:
   istniejącego pytania,
 - w przeciwnym razie powstaje nowe pytanie.
 
-Podczas pisania (debounce 400 ms) aplikacja podpowiada podobne istniejące
-pytania — student może kliknąć zamiast wpisywać.
+Dopasowanie dzieje się automatycznie po wysłaniu wpisu — student nic nie
+potwierdza, a powtarzające się pytania łączą się same.
 
 ## Model danych
 

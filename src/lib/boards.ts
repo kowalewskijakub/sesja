@@ -1,10 +1,19 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { boards, type Board } from "@/db/schema";
 
 export async function getBoardBySlug(slug: string): Promise<Board | null> {
   const rows = await db.select().from(boards).where(eq(boards.slug, slug)).limit(1);
   return rows[0] ?? null;
+}
+
+/** Tablice utworzone przez danego użytkownika — od najnowszej. */
+export async function getBoardsByOwner(ownerId: string): Promise<Board[]> {
+  return db
+    .select()
+    .from(boards)
+    .where(eq(boards.ownerId, ownerId))
+    .orderBy(desc(boards.createdAt));
 }
 
 /** Czy okno czasowe na dodawanie pytań jest teraz otwarte. */
