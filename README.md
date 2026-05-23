@@ -15,7 +15,7 @@ dostaje niezgadywalny link do udostępnienia i staje się jej prowadzącym
 - **Neon** — serverless Postgres z rozszerzeniem `pgvector`
 - **Neon Auth** (Better Auth) — logowanie prowadzącego
 - **Drizzle ORM**
-- **OpenAI** `text-embedding-3-small` — matchowanie podobnych pytań
+- **OpenRouter** — embeddingi do matchowania pytań (domyślnie `openai/text-embedding-3-small`)
 - Hosting: **Vercel**
 
 ## Uruchomienie lokalne
@@ -41,14 +41,20 @@ Wszystkie opisane w `.env.example`:
 | `DATABASE_URL` | Neon → Dashboard → Connection Details (wariant pooled) |
 | `NEON_AUTH_BASE_URL` | Neon → Project → Branch → Auth → Configuration (Auth URL) |
 | `NEON_AUTH_COOKIE_SECRET` | losowy ciąg min. 32 znaki — `openssl rand -base64 32` |
-| `OPENAI_API_KEY` | platform.openai.com → API keys |
+| `OPENROUTER_API_KEY` | openrouter.ai/settings/keys |
 | `NEXT_PUBLIC_APP_URL` | adres aplikacji (np. `https://sesja.app`) |
 
 ### Tryb awaryjny embeddingów
 
-Bez `OPENAI_API_KEY` matchowanie działa tylko na identycznym (znormalizowanym)
-tekście — aplikacja nie przestaje działać, ale gorzej grupuje warianty pytań.
-Dodanie klucza włącza pełne embeddingi.
+Bez `OPENROUTER_API_KEY` matchowanie działa tylko na identycznym
+(znormalizowanym) tekście — aplikacja nie przestaje działać, ale gorzej
+grupuje warianty pytań. Dodanie klucza włącza pełne embeddingi.
+
+Model embeddingów ustawia `EMBEDDING_MODEL` (domyślnie
+`openai/text-embedding-3-small`, 1536 wymiarów). Inne modele dostępne są na
+openrouter.ai/models z filtrem embeddings — jeśli wybrany model ma inną liczbę
+wymiarów, trzeba zmienić `EMBEDDING_DIM` w `src/db/schema.ts` i ponownie
+zmigrować bazę.
 
 ## Konfiguracja Neon (baza + Auth)
 
@@ -92,7 +98,7 @@ w ustawieniach Neon Auth.
 
 ## Jak działa matchowanie
 
-Przy każdym wpisie liczony jest embedding tekstu (OpenAI). Nowy wpis jest
+Przy każdym wpisie liczony jest embedding tekstu (OpenRouter). Nowy wpis jest
 porównywany kosinusowo z istniejącymi pytaniami w tej tablicy:
 
 - podobieństwo > `MATCH_THRESHOLD` (domyślnie 0.82) → wpis dolicza się do

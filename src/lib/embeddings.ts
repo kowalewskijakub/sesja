@@ -1,33 +1,46 @@
 /**
- * Embeddingi tekstu przez OpenAI (text-embedding-3-small, 1536 wymiarów).
- * Koszt: ~$0.02 / 1M tokenów — cała sesja egzaminacyjna to kilka groszy.
+ * Embeddingi tekstu przez OpenRouter (POST /api/v1/embeddings).
  *
- * Gdy OPENAI_API_KEY nie jest ustawiony, funkcja zwraca null, a matchowanie
- * przechodzi w tryb awaryjny (porównanie znormalizowanego tekstu).
+ * Domyślny model: openai/text-embedding-3-small (1536 wymiarów) — zgodny
+ * z kolumną vector(1536) w bazie. Endpoint OpenRouter jest zgodny z formatem
+ * OpenAI, więc odpowiedź ma kształt { data: [{ embedding: number[] }] }.
+ *
+ * UWAGA: zmiana EMBEDDING_MODEL na model o innej liczbie wymiarów wymaga
+ * zmiany EMBEDDING_DIM w src/db/schema.ts i ponownej migracji bazy.
+ *
+ * Bez OPENROUTER_API_KEY embed() zwraca null, a matchowanie przechodzi
+ * w tryb awaryjny (porównanie znormalizowanego tekstu).
  */
 
-const MODEL = "text-embedding-3-small";
+const MODEL = process.env.EMBEDDING_MODEL || "openai/text-embedding-3-small";
+const ENDPOINT = "https://openrouter.ai/api/v1/embeddings";
 
 export function embeddingsEnabled(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+  return !!process.env.OPENROUTER_API_KEY;
 }
 
 export async function embed(text: string): Promise<number[] | null> {
   const input = text.trim();
-  if (!input || !process.env.OPENAI_API_KEY) return null;
+  if (!input || !process.env.OPENROUTER_API_KEY) return null;
 
   try {
-    const res = await fetch("https://api.openai.com/v1/embeddings", {
+    const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        // Opcjonalne nagłówki OpenRoutera — pomagają identyfikować ruch.
+        "X-Title": "Sesja",
       },
       body: JSON.stringify({ model: MODEL, input }),
     });
 
     if (!res.ok) {
-      console.error("OpenAI embeddings error:", res.status, await res.text());
+      console.error(
+        "OpenRouter embeddings error:",
+        res.status,
+        await res.text(),
+      );
       return null;
     }
 
@@ -36,7 +49,7 @@ export async function embed(text: string): Promise<number[] | null> {
     };
     return data.data[0]?.embedding ?? null;
   } catch (err) {
-    console.error("OpenAI embeddings request failed:", err);
+    console.error("OpenRouter embeddings request failed:", err);
     return null;
   }
 }
